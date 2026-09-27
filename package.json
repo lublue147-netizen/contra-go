@@ -1,0 +1,17 @@
+{
+  "name": "contra-go-wasm",
+  "version": "1.0.0",
+  "description": "Contra (魂斗罗) Game built in Go and WebAssembly",
+  "scripts": {
+    "build": "bash build.sh"
+  },
+  "keywords": [
+    "contra",
+    "golang",
+    "webassembly",
+    "wasm",
+    "game",
+    "retro"
+  ],
+  "license": "MIT"
+}

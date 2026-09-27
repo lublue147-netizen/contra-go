@@ -1,0 +1,14 @@
+# Compiled artifacts (built remotely on GitHub Actions)
+dist/
+*.wasm
+contra-server
+
+# Go temporary files
+/tmp/
+
+# Vercel
+.vercel
+
+# OS metadata
+.DS_Store
+Thumbs.db

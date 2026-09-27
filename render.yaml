@@ -1,0 +1,17 @@
+services:
+  # Option 1: Render Static Site (Free, fast global CDN)
+  - type: web
+    name: contra-go-static
+    runtime: static
+    buildCommand: bash render-build.sh
+    staticPublishPath: dist
+    headers:
+      - path: /*.wasm
+        name: Content-Type
+        value: application/wasm
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+    envVars:
+      - key: GO_VERSION
+        value: 1.22.5
