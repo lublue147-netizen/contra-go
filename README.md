@@ -1,5 +1,9 @@
 # 🎮 Contra (魂斗罗) - Go + WebAssembly 云端全自动编译与多平台部署
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/lublue147-netizen/contra-go)
+[![Vercel Live](https://img.shields.io/badge/Vercel-Online%20(Live)-success?logo=vercel)](https://contra-go.vercel.app)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Online%20(Live)-blue?logo=github)](https://lublue147-netizen.github.io/contra-go/)
+
 本项目是用 **Go语言 (Golang)** 原生开发的经典红白机 **《魂斗罗》(Contra) 第一关群岛丛林战场**。
 遵循 **“免本地构建 (Zero Local Build)”** 原则：本地无需安装配置任何 Go 编译器或构建工具，所有代码托管在 **GitHub**，由 **GitHub Actions** 自动进行云端交叉编译为 WebAssembly，并全自动流水线部署到 **Vercel** 和 **Render**。
 
