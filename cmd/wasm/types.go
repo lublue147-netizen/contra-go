@@ -148,7 +148,13 @@ type Boss struct {
 }
 
 type Platform struct {
-	X, Y, W, H float64
-	IsWater    bool
-	IsDropThru bool // Can drop down with Down+Jump
+	ID           int
+	X, Y, W, H   float64
+	IsWater      bool
+	IsDropThru   bool // Can drop down with Down+Jump
+	IsBridge     bool
+	Exploding    bool
+	ExplodeTimer int
+	Destroyed    bool
 }
+

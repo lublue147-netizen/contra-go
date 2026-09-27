@@ -47,11 +47,33 @@ func (a *AudioSystem) ensureContext() bool {
 
 func (a *AudioSystem) ToggleMute() bool {
 	a.muted = !a.muted
-	if a.muted && a.bgmGain.Truthy() {
-		a.bgmGain.Get("gain").Set("value", 0)
+	window := js.Global()
+	muteFn := window.Get("setContraBGMMute")
+	if muteFn.Truthy() {
+		muteFn.Invoke(a.muted)
 	}
 	return a.muted
 }
+
+func (a *AudioSystem) StartBGM() {
+	if !a.ensureContext() {
+		return
+	}
+	window := js.Global()
+	startFn := window.Get("startContraBGM")
+	if startFn.Truthy() {
+		startFn.Invoke(a.ctx)
+	}
+}
+
+func (a *AudioSystem) StopBGM() {
+	window := js.Global()
+	stopFn := window.Get("stopContraBGM")
+	if stopFn.Truthy() {
+		stopFn.Invoke()
+	}
+}
+
 
 func (a *AudioSystem) PlayShoot() {
 	if !a.ensureContext() {

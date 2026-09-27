@@ -27,7 +27,9 @@ type Player struct {
 	RespawnTimer    int
 	KonamiProgress  int
 	TotalKills      int
+	IsLanceBean     bool
 }
+
 
 var konamiSequence = []string{
 	"ArrowUp", "ArrowUp",
@@ -288,6 +290,10 @@ func (p *Player) checkPlatformCollisions(stage *Stage) {
 	p.InWater = false
 
 	for _, plat := range stage.Platforms {
+		if plat.Destroyed {
+			continue
+		}
+
 		// Water detection
 		if plat.IsWater {
 			if p.X >= plat.X && p.X <= plat.X+plat.W && footY >= plat.Y && footY <= plat.Y+plat.H {
@@ -479,3 +485,10 @@ func (p *Player) Die() {
 		globalAudio.PlayDeath()
 	}
 }
+
+func (p *Player) ToggleCharacter() bool {
+	p.IsLanceBean = !p.IsLanceBean
+	return p.IsLanceBean
+}
+
+

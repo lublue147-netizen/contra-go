@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"syscall/js"
 )
+
 
 type Renderer struct {
 	canvas js.Value
@@ -50,6 +52,14 @@ func (r *Renderer) Render(game *Game) {
 		return
 	}
 
+	ctx.Call("save")
+
+	if game.ScreenShake > 0 {
+		sx := (rand.Float64() - 0.5) * game.ShakeIntensity
+		sy := (rand.Float64() - 0.5) * game.ShakeIntensity
+		ctx.Call("translate", sx, sy)
+	}
+
 	// 1. Draw Parallax Background
 	r.drawBackground(stage)
 
@@ -81,7 +91,10 @@ func (r *Renderer) Render(game *Game) {
 
 	// 9. Draw HUD
 	r.drawHUD(game)
+
+	ctx.Call("restore")
 }
+
 
 func (r *Renderer) drawBackground(stage *Stage) {
 	ctx := r.ctx
@@ -138,6 +151,10 @@ func (r *Renderer) drawPlatforms(stage *Stage) {
 	camX := stage.CameraX
 
 	for _, plat := range stage.Platforms {
+		if plat.Destroyed {
+			continue
+		}
+
 		screenX := plat.X - camX
 		if screenX+plat.W < 0 || screenX > r.width {
 			continue
@@ -164,7 +181,15 @@ func (r *Renderer) drawPlatforms(stage *Stage) {
 
 		if plat.IsDropThru {
 			// Wooden suspension bridge or cliff ledge
-			ctx.Set("fillStyle", "#8b5a2b")
+			bridgeColor := "#8b5a2b"
+			if plat.Exploding {
+				if (plat.ExplodeTimer/2)%2 == 0 {
+					bridgeColor = "#ff3300"
+				} else {
+					bridgeColor = "#ffcc00"
+				}
+			}
+			ctx.Set("fillStyle", bridgeColor)
 			ctx.Call("fillRect", screenX, plat.Y, plat.W, plat.H)
 			// Plank lines
 			ctx.Set("fillStyle", "#5c3a1e")
@@ -172,6 +197,7 @@ func (r *Renderer) drawPlatforms(stage *Stage) {
 				ctx.Call("fillRect", screenX+bx, plat.Y, 2, plat.H)
 			}
 			ctx.Set("fillStyle", "#a66f38")
+
 			ctx.Call("fillRect", screenX, plat.Y, plat.W, 2)
 		} else {
 			// Solid earth jungle ground
@@ -234,11 +260,20 @@ func (r *Renderer) drawPlayer(p *Player, camX float64) {
 		}
 	}
 
+	pantsColor := "#1b3f8b"
+	headbandColor := "#e60000"
+	hairColor := "#6b4423"
+	if p.IsLanceBean {
+		pantsColor = "#cc2222"
+		headbandColor = "#1166ee"
+		hairColor = "#111111"
+	}
+
 	// Somersault Jump (Spinning ball)
 	if p.State == PlayerJumping {
 		ctx.Call("rotate", p.FlipAngle)
 		// Body ball
-		ctx.Set("fillStyle", "#1b3f8b") // Blue pants
+		ctx.Set("fillStyle", pantsColor)
 		ctx.Call("beginPath")
 		ctx.Call("arc", 0, 0, 10, 0, math.Pi*2)
 		ctx.Call("fill")
@@ -247,8 +282,8 @@ func (r *Renderer) drawPlayer(p *Player, camX float64) {
 		ctx.Call("beginPath")
 		ctx.Call("arc", 0, -3, 7, 0, math.Pi*2)
 		ctx.Call("fill")
-		// Red headband
-		ctx.Set("fillStyle", "#e60000")
+		// Headband
+		ctx.Set("fillStyle", headbandColor)
 		ctx.Call("fillRect", -5, -8, 10, 3)
 		ctx.Call("restore")
 		return
@@ -263,13 +298,13 @@ func (r *Renderer) drawPlayer(p *Player, camX float64) {
 		// Torso lying flat
 		ctx.Set("fillStyle", "#d2906b")
 		ctx.Call("fillRect", -12*dir, 2, 20*dir, 8)
-		// Blue pants
-		ctx.Set("fillStyle", "#1b3f8b")
+		// Pants
+		ctx.Set("fillStyle", pantsColor)
 		ctx.Call("fillRect", -18*dir, 4, 10*dir, 6)
-		// Head & red headband
+		// Head & headband
 		ctx.Set("fillStyle", "#d2906b")
 		ctx.Call("fillRect", 6*dir, 0, 8*dir, 8)
-		ctx.Set("fillStyle", "#e60000")
+		ctx.Set("fillStyle", headbandColor)
 		ctx.Call("fillRect", 6*dir, 0, 8*dir, 3)
 		// Gun forward
 		ctx.Set("fillStyle", "#444444")
@@ -285,7 +320,7 @@ func (r *Renderer) drawPlayer(p *Player, camX float64) {
 	}
 
 	// Legs
-	ctx.Set("fillStyle", "#1b3f8b") // Blue pants
+	ctx.Set("fillStyle", pantsColor)
 	if p.State == PlayerRunning {
 		// Running frame cycle
 		switch p.RunFrame {
@@ -312,17 +347,18 @@ func (r *Renderer) drawPlayer(p *Player, camX float64) {
 	ctx.Set("fillStyle", "#d2906b")
 	ctx.Call("fillRect", -5*dir, -8, 10*dir, 14)
 
-	// Head & Red Headband (Bill Rizer)
+	// Head & Headband
 	ctx.Set("fillStyle", "#d2906b")
 	ctx.Call("fillRect", -4*dir, -18, 8*dir, 9)
 	// Hair
-	ctx.Set("fillStyle", "#6b4423")
+	ctx.Set("fillStyle", hairColor)
 	ctx.Call("fillRect", -4*dir, -18, 8*dir, 3)
-	// Red Headband
-	ctx.Set("fillStyle", "#e60000")
+	// Headband
+	ctx.Set("fillStyle", headbandColor)
 	ctx.Call("fillRect", -5*dir, -16, 9*dir, 3)
 	// Flowing headband ribbon
 	ctx.Call("fillRect", -10*dir, -16, 5*dir, 2)
+
 
 	// Gun & Arms based on Aim Direction
 	ctx.Set("fillStyle", "#444444")
@@ -693,12 +729,22 @@ func (r *Renderer) drawTitleScreen(game *Game) {
 		ctx.Call("fillText", "CHEAT: UP UP DOWN DOWN LEFT RIGHT LEFT RIGHT B A", r.width/2, 116)
 	}
 
+	// Character Select indicator
+	commandoName := "1P: BILL RIZER [比尔]"
+	if game.Player.IsLanceBean {
+		commandoName = "1P: LANCE BEAN [兰斯]"
+	}
+	ctx.Set("fillStyle", "#ffd700")
+	ctx.Set("font", "bold 9px monospace")
+	ctx.Call("fillText", commandoName+" (按 C 切换角色)", r.width/2, 130)
+
 	// Start blinking prompt
 	if (game.FrameCount/30)%2 == 0 {
 		ctx.Set("fillStyle", "#ffffff")
 		ctx.Set("font", "bold 11px monospace")
-		ctx.Call("fillText", "PRESS ENTER / SPACE / TAP TO START", r.width/2, 145)
+		ctx.Call("fillText", "PRESS ENTER / SPACE / TAP TO START", r.width/2, 148)
 	}
+
 
 	// Instructions
 	ctx.Set("fillStyle", "#aaaaaa")

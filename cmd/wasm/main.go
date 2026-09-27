@@ -88,6 +88,8 @@ func setupKeyboardInput(window js.Value) {
 			game.Input.Start = true
 		case "m", "M":
 			audio.ToggleMute()
+		case "c", "C":
+			game.Player.ToggleCharacter()
 		}
 
 		// Prevent browser scrolling with arrow keys or space
@@ -154,6 +156,8 @@ func setupVirtualInput(window js.Value) {
 			if globalAudio != nil {
 				globalAudio.PlayKonami()
 			}
+		case "character":
+			game.Player.ToggleCharacter()
 		}
 		return nil
 	}))
@@ -162,6 +166,12 @@ func setupVirtualInput(window js.Value) {
 	window.Set("toggleMute", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		return audio.ToggleMute()
 	}))
+
+	// Expose character toggle
+	window.Set("toggleCharacter", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		return game.Player.ToggleCharacter()
+	}))
+
 }
 
 func pollGamepad(window js.Value) {

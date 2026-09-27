@@ -14,7 +14,8 @@
       <span>魂斗罗 · GO WASM</span>
     </div>
     <div class="header-controls">
-      <button id="btnSound" class="btn-ctrl" title="切换声音">🔊 音效</button>
+      <button id="btnChar" class="btn-ctrl" title="切换角色 (比尔/兰斯)">👤 切换角色</button>
+      <button id="btnSound" class="btn-ctrl" title="切换声音">🔊 音乐/音效</button>
       <button id="btnCrt" class="btn-ctrl" title="CRT扫描线滤镜">📺 CRT滤镜</button>
       <button id="btnTouchToggle" class="btn-ctrl" title="显示/隐藏虚拟按键">📱 触控盘</button>
       <button id="btnFullscreen" class="btn-ctrl" title="全屏">⛶ 全屏</button>
@@ -45,6 +46,7 @@
       <!-- Center System Buttons -->
       <div class="center-buttons">
         <button class="pill-btn" data-btn="start">START / 暂停</button>
+        <button class="pill-btn" data-btn="character" style="color:#00ffff;">👤 换角色</button>
         <button class="pill-btn" data-btn="konami" style="color:#ffd700;">★ 30命秘籍</button>
       </div>
 
@@ -62,9 +64,11 @@
       • 移动与瞄准：<span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> 或 <span class="key-badge">↑</span><span class="key-badge">↓</span><span class="key-badge">←</span><span class="key-badge">→</span> (支持8方向瞄准与俯卧匍匐)<br>
       • 射击 / 开火：<span class="key-badge">J</span> 或 <span class="key-badge">Z</span> 或 <span class="key-badge">Space 空格</span><br>
       • 跳跃：<span class="key-badge">K</span> 或 <span class="key-badge">X</span> (空翻跳跃)<br>
-      • 下落跳跃：<span class="key-badge">S</span> / <span class="key-badge">↓</span> + <span class="key-badge">跳跃</span> (可穿越掉落悬空木桥/平台)<br>
+      • 下落跳跃：<span class="key-badge">S</span> / <span class="key-badge">↓</span> + <span class="key-badge">跳跃</span> (可穿越下落悬空木桥/平台)<br>
+      • 切换角色：<span class="key-badge">C</span> 键 (比尔·雷泽 Bill / 兰斯·比恩 Lance)<br>
       • 开始游戏 / 暂停：<span class="key-badge">Enter 回车</span><br>
       • 经典30命秘籍：在标题画面按 <span class="key-badge">↑</span><span class="key-badge">↑</span><span class="key-badge">↓</span><span class="key-badge">↓</span><span class="key-badge">←</span><span class="key-badge">→</span><span class="key-badge">←</span><span class="key-badge">→</span><span class="key-badge">B</span><span class="key-badge">A</span> (或直接点击“30命秘籍”按钮)<br>
+      • 动态桥梁：奔跑通过第一关悬空索桥时，桥梁会连锁起爆，请迅速冲锋！<br>
       • 外设支持：自动兼容标准 USB / 蓝牙无线手柄 (Xbox / PS / Switch 等)！
     </p>
   </div>
@@ -75,6 +79,116 @@
 
   <script src="wasm_exec.js"></script>
   <script>
+    // --- Web Audio 8-bit Contra Stage 1 Jungle Theme Sequencer ---
+    let bgmAudioCtx = null;
+    let bgmPlaying = false;
+    let bgmMuted = false;
+    let bgmGainNode = null;
+    let bgmTimer = null;
+    let currentStep = 0;
+
+    const noteFreqs = {
+      "D2": 73.42, "F2": 87.31, "G2": 97.99, "A2": 110.00, "Bb2": 116.54, "C3": 130.81,
+      "D3": 146.83, "F3": 174.61, "G3": 196.00, "A3": 220.00, "Bb3": 233.08, "C4": 261.63,
+      "D4": 293.66, "E4": 329.63, "F4": 349.23, "G4": 392.00, "Ab4": 415.30, "A4": 440.00, "C5": 523.25, "D5": 587.33,
+      "-": 0
+    };
+
+    const bassSeq = [
+      "D2", "D2", "F2", "D2", "G2", "D2", "F2", "G2",
+      "D2", "D2", "F2", "D2", "C3", "Bb2", "A2", "G2"
+    ];
+
+    const leadSeq = [
+      "D4", "-", "F4", "G4", "Ab4", "A4", "-", "F4", "D4", "-", "-", "C4", "D4", "-", "-", "-",
+      "D4", "-", "F4", "G4", "Ab4", "A4", "-", "C5", "D5", "-", "-", "C5", "A4", "-", "G4", "-"
+    ];
+
+    window.startContraBGM = function(ctx) {
+      if (bgmPlaying) return;
+      bgmAudioCtx = ctx;
+      bgmPlaying = true;
+      currentStep = 0;
+
+      if (!bgmGainNode) {
+        bgmGainNode = ctx.createGain();
+        bgmGainNode.gain.setValueAtTime(bgmMuted ? 0 : 0.16, ctx.currentTime);
+        bgmGainNode.connect(ctx.destination);
+      }
+
+      const stepIntervalMs = 105;
+
+      function tick() {
+        if (!bgmPlaying || !bgmAudioCtx) return;
+        const now = bgmAudioCtx.currentTime;
+
+        // 1. Bass voice
+        const bNote = bassSeq[currentStep % bassSeq.length];
+        if (bNote !== "-") {
+          const osc = bgmAudioCtx.createOscillator();
+          const gain = bgmAudioCtx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(noteFreqs[bNote], now);
+          gain.gain.setValueAtTime(0.20, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+          osc.connect(gain);
+          gain.connect(bgmGainNode);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        }
+
+        // 2. Lead voice
+        const lNote = leadSeq[currentStep % leadSeq.length];
+        if (lNote !== "-") {
+          const osc = bgmAudioCtx.createOscillator();
+          const gain = bgmAudioCtx.createGain();
+          osc.type = "square";
+          osc.frequency.setValueAtTime(noteFreqs[lNote], now);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+          osc.connect(gain);
+          gain.connect(bgmGainNode);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        }
+
+        // 3. Noise hi-hat / snare
+        if (currentStep % 2 === 0) {
+          const isSnare = (currentStep % 4 === 2);
+          const buf = bgmAudioCtx.createBuffer(1, Math.floor(bgmAudioCtx.sampleRate * 0.04), bgmAudioCtx.sampleRate);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.3));
+          const src = bgmAudioCtx.createBufferSource();
+          src.buffer = buf;
+          const nGain = bgmAudioCtx.createGain();
+          nGain.gain.setValueAtTime(isSnare ? 0.14 : 0.05, now);
+          src.connect(nGain);
+          nGain.connect(bgmGainNode);
+          src.start(now);
+        }
+
+        currentStep++;
+        bgmTimer = setTimeout(tick, stepIntervalMs);
+      }
+
+      tick();
+    };
+
+    window.stopContraBGM = function() {
+      bgmPlaying = false;
+      if (bgmTimer) {
+        clearTimeout(bgmTimer);
+        bgmTimer = null;
+      }
+    };
+
+    window.setContraBGMMute = function(muted) {
+      bgmMuted = muted;
+      if (bgmGainNode && bgmAudioCtx) {
+        bgmGainNode.gain.setValueAtTime(bgmMuted ? 0 : 0.16, bgmAudioCtx.currentTime);
+      }
+    };
+
     // Ready callback from Wasm
     window.onContraWasmReady = function() {
       const overlay = document.getElementById("loadingOverlay");
@@ -89,7 +203,6 @@
     async function initWasm() {
       const loadingText = document.getElementById("loadingText");
       if (!WebAssembly.instantiateStreaming) {
-        // Polyfill for browsers lacking streaming
         WebAssembly.instantiateStreaming = async (resp, importObject) => {
           const source = await (await resp).arrayBuffer();
           return await WebAssembly.instantiate(source, importObject);
@@ -116,7 +229,16 @@
     btnSound.addEventListener("click", () => {
       if (window.toggleMute) {
         const muted = window.toggleMute();
-        btnSound.innerText = muted ? "🔇 静音" : "🔊 音效";
+        btnSound.innerText = muted ? "🔇 静音" : "🔊 音乐/音效";
+      }
+    });
+
+    // Character toggle button
+    const btnChar = document.getElementById("btnChar");
+    btnChar.addEventListener("click", () => {
+      if (window.toggleCharacter) {
+        const isLance = window.toggleCharacter();
+        btnChar.innerText = isLance ? "👤 兰斯 (2P)" : "👤 比尔 (1P)";
       }
     });
 

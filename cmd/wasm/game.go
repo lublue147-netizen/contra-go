@@ -26,15 +26,23 @@ type Game struct {
 	Boss          *Boss
 	Bullets       []*Bullet
 	Particles     []*Particle
-	DropItems     []*DropItem
-	FloatingTexts []*FloatingText
-	Input         InputState
-	HiScore       int
-	FrameCount    int
-	audio         *AudioSystem
-	prevJump      bool
-	prevShoot     bool
+	DropItems      []*DropItem
+	FloatingTexts  []*FloatingText
+	Input          InputState
+	HiScore        int
+	FrameCount     int
+	audio          *AudioSystem
+	prevJump       bool
+	prevShoot      bool
+	ScreenShake    int
+	ShakeIntensity float64
 }
+
+func (g *Game) TriggerShake(frames int, intensity float64) {
+	g.ScreenShake = frames
+	g.ShakeIntensity = intensity
+}
+
 
 func NewGame(audio *AudioSystem) *Game {
 	st := NewStage1()
@@ -77,10 +85,18 @@ func (g *Game) StartGame() {
 	g.DropItems = nil
 	g.FloatingTexts = nil
 	g.FrameCount = 0
+	g.ScreenShake = 0
+	if g.audio != nil {
+		g.audio.StartBGM()
+	}
 }
 
 func (g *Game) Update() {
 	g.FrameCount++
+
+	if g.ScreenShake > 0 {
+		g.ScreenShake--
+	}
 
 	// Just pressed flags
 	g.Input.JumpJustPressed = g.Input.Jump && !g.prevJump
@@ -132,11 +148,15 @@ func (g *Game) updatePlaying() {
 	// Game Over check
 	if g.Player.Lives < 0 {
 		g.State = StateGameOver
+		if g.audio != nil {
+			g.audio.StopBGM()
+		}
 		return
 	}
 
-	// 2. Update Stage & Camera
-	g.Stage.Update(g.Player, g.Boss)
+	// 2. Update Stage & Camera (with bridge explosion & screen shake)
+	g.Stage.Update(g.Player, g.Boss, &g.Particles, g.TriggerShake)
+
 
 	// 3. Update Enemies
 	var playerBullets []*Bullet
@@ -174,11 +194,15 @@ func (g *Game) updatePlaying() {
 	// Check Boss Victory
 	if g.Boss.Defeated && g.Boss.DeathTimer > 200 {
 		g.State = StateVictory
+		if g.audio != nil {
+			g.audio.StopBGM()
+		}
 		if globalAudio != nil {
 			globalAudio.PlayVictory()
 		}
 		return
 	}
+
 
 	// 5. Update Bullets & Collide Enemy Bullets with Player
 	g.Bullets = UpdateBullets(g.Bullets, g.Stage)
