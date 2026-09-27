@@ -1,6 +1,7 @@
 # 🎮 Contra (魂斗罗) - Go + WebAssembly 云端全自动编译与多平台部署
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/lublue147-netizen/contra-go)
+[![Android APK](https://img.shields.io/badge/Android%20APK-Download%20(v1.0.0)-brightgreen?logo=android)](https://github.com/lublue147-netizen/contra-go/releases)
 [![Vercel Live](https://img.shields.io/badge/Vercel-Online%20(Live)-success?logo=vercel)](https://contra-go.vercel.app)
 [![Cloudflare Pages](https://img.shields.io/badge/Cloudflare%20Pages-Online%20(Live)-orange?logo=cloudflare)](https://contra-go.pages.dev)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Online%20(Live)-blue?logo=github)](https://lublue147-netizen.github.io/contra-go/)
@@ -154,6 +155,21 @@ git push -u origin main
    - **Build output directory**：`dist`
    - **Environment variables**：添加 `GO_VERSION=1.22.5`
 4. 点击 **Save and Deploy**，Cloudflare 将在边缘云端自动编译并部署！
+
+---
+
+### 第五步：Android 原生版 APK 自动编译与发布
+
+本项目已提供原生 Android 项目工程（位于 `android/` 目录），由 **GitHub Actions 全自动在云端编译并签名发布 APK**，用户本地完全不需要配置 Android SDK、NDK 或 Java 环境：
+
+- **APK 发布页**：[GitHub Releases (下载最新 APK)](https://github.com/lublue147-netizen/contra-go/releases)
+- **直接下载**：[Contra-v1.0.0-release.apk](https://github.com/lublue147-netizen/contra-go/releases/download/v1.0.0/Contra-v1.0.0-release.apk)
+- **核心特色**：
+  - **100% 离线运行**：内核、图形与 WebAssembly 音效合成器全部打包在 APK 内，无需任何网络即可随时随地畅玩；
+  - **60FPS GPU 硬件加速**：启用 Android 硬件加速渲染管线，极速畅玩无卡顿；
+  - **沉浸式全屏与防误触**：横屏全屏显示，自动隐藏系统状态栏与虚拟导航键，适配挖孔屏与刘海屏；
+  - **触控震动反馈 (Haptic Feedback)**：发射散弹 [S]、爆炸及跳跃均带有真实的手机物理马达震动回馈；
+  - **蓝牙/USB手柄完美兼容**：适配 Xbox / PS4 / PS5 / Switch / 8BitDo 等标准外接手柄。
 
 ---
 

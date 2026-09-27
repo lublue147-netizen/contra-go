@@ -1,0 +1,128 @@
+name: Build and Release Android APK
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build & Release Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+
+      - name: Compile Go WebAssembly Game
+        run: |
+          echo "=== Compiling Contra Go WebAssembly ==="
+          bash build.sh
+          echo "=== Copying assets to Android app assets directory ==="
+          mkdir -p android/app/src/main/assets
+          cp -r dist/* android/app/src/main/assets/
+          ls -lh android/app/src/main/assets/
+
+      - name: Set up Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Generate Release Signing Keystore
+        run: |
+          echo "=== Generating Release Keystore ==="
+          keytool -genkey -v \
+            -keystore android/app/release.keystore \
+            -alias contragame \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass contragame2026 \
+            -keypass contragame2026 \
+            -dname "CN=Contra, OU=RetroGaming, O=ContraGo, L=Tokyo, ST=Tokyo, C=JP"
+
+      - name: Build Android Release APK
+        run: |
+          echo "=== Building Signed Release APK ==="
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -PRELEASE_STORE_FILE=release.keystore \
+            -PRELEASE_STORE_PASSWORD=contragame2026 \
+            -PRELEASE_KEY_ALIAS=contragame \
+            -PRELEASE_KEY_PASSWORD=contragame2026 \
+            --stacktrace
+          
+          cd ..
+          APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "Error: Release APK not found!"
+            exit 1
+          fi
+          echo "Found APK at: $APK_PATH"
+          cp "$APK_PATH" Contra-v1.0.0-release.apk
+          ls -lh Contra-v1.0.0-release.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Contra-Android-APK
+          path: Contra-v1.0.0-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}
+          name: "🎮 Contra (魂斗罗) Android APK v1.0.0"
+          files: Contra-v1.0.0-release.apk
+          draft: false
+          prerelease: false
+          body: |
+            # 🎮 Contra (魂斗罗) Android 原生版 APK 发布
+
+            欢迎下载 **《魂斗罗》(Contra)** 经典红白机 Go 语言 + WebAssembly 原生打包的安卓 APK！
+
+            ### 📱 安装包下载
+            - **[直接下载 Contra-v1.0.0-release.apk](../../releases/download/v1.0.0/Contra-v1.0.0-release.apk)** (安装即可直接离线畅玩)
+
+            ---
+
+            ### 🌟 安卓版本核心特色
+            - **纯离线运行 (Zero Network)**：内核、图形与 WebAssembly 音频全部打包在 APK 内，无需联网即可随时随地畅玩。
+            - **硬件加速 60FPS**：开启 GPU 硬件加速渲染，丝滑还原红白机群岛丛林战场。
+            - **沉浸式全屏与防误触**：横屏全屏显示，自动隐藏系统状态栏与虚拟导航键，适配刘海屏与挖孔屏。
+            - **触控震动反馈 (Haptic Feedback)**：发射散弹 [S]、爆炸及跳跃均带有真实的安卓物理马达震动回馈！
+            - **支持蓝牙/USB游戏手柄**：自动适配 Xbox / PS4 / PS5 / Switch / 8BitDo 等标准外接手柄。
+            - **全套经典武器**：普通步枪、散弹枪 [S]、激光枪 [L]、重机枪 [M]、无敌防护罩 [B]。
+            - **一键 30 命秘籍**：屏幕直观提供“★ 30命秘籍”按钮，随时开启不死模式。
+            - **双主角自由切换**：比尔·雷泽 (1P) 与兰斯·比恩 (2P) 随时切换。
+            - **纯算法 8-bit 音效合成**：原汁原味还原丛林 BGM 与射击爆破音效。
+
+            ---
+
+            ### 🕹️ 操作方式
+            - **左侧触控**：8 方向虚拟摇杆 (支持卧倒、瞄准、斜射)
+            - **右侧触控**：`A` 键跳跃 (空翻)、`B` 键射击 (开火)
+            - **组合按键**：`↓` + `A` 穿透下落悬空木桥
+            - **手柄映射**：左摇杆/十字键移动，A/X 跳跃，B/Y 射击，Start 暂停，Select 切换角色
