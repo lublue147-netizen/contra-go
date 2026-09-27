@@ -2,8 +2,6 @@
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/lublue147-netizen/contra-go)
 [![Android APK](https://img.shields.io/badge/Android%20APK-Download%20(v1.0.0)-brightgreen?logo=android)](https://github.com/lublue147-netizen/contra-go/releases)
-[![Vercel Live](https://img.shields.io/badge/Vercel-Online%20(Live)-success?logo=vercel)](https://contra-go.vercel.app)
-[![Cloudflare Pages](https://img.shields.io/badge/Cloudflare%20Pages-Online%20(Live)-orange?logo=cloudflare)](https://contra-go.pages.dev)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Online%20(Live)-blue?logo=github)](https://lublue147-netizen.github.io/contra-go/)
 
 本项目是用 **Go语言 (Golang)** 原生开发的经典红白机 **《魂斗罗》(Contra) 第一关群岛丛林战场**。
