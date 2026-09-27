@@ -1,0 +1,346 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+body {
+  background: radial-gradient(circle at center, #141729 0%, #06070c 100%);
+  color: #fff;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow-x: hidden;
+}
+
+header {
+  width: 100%;
+  max-width: 900px;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.logo h1 {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(180deg, #ff4d4d 0%, #ff0000 50%, #990000 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+}
+
+.logo span {
+  font-size: 0.85rem;
+  color: #ffd700;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.header-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-ctrl {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #eee;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-ctrl:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: #00ffff;
+  color: #00ffff;
+}
+
+.game-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 6px 0;
+}
+
+.cabinet-bezel {
+  position: relative;
+  background: #181922;
+  padding: 12px;
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8),
+              inset 0 1px 2px rgba(255, 255, 255, 0.2),
+              0 0 0 2px #282a36;
+  max-width: 95vw;
+}
+
+canvas#gameCanvas {
+  display: block;
+  width: 768px;
+  height: 672px;
+  max-width: 100%;
+  aspect-ratio: 256 / 224;
+  height: auto;
+  background-color: #000;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+}
+
+/* CRT Scanline Overlay */
+.crt-overlay {
+  pointer-events: none;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.3) 50%
+  ),
+  linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 4px, 6px 100%;
+  z-index: 10;
+  opacity: 0.8;
+  display: block;
+}
+
+.crt-overlay.disabled {
+  display: none;
+}
+
+/* Loading Overlay */
+#loadingOverlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  background: #080a14;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  z-index: 20;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #ff3333;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-family: monospace;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  color: #ffd700;
+}
+
+/* Mobile Virtual Touch Controls */
+.mobile-controls {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 768px;
+  padding: 16px 20px;
+  margin-top: 6px;
+}
+
+.dpad {
+  position: relative;
+  width: 130px;
+  height: 130px;
+}
+
+.dpad-btn {
+  position: absolute;
+  background: #232533;
+  border: 2px solid #3d4158;
+  border-radius: 8px;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  touch-action: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.dpad-btn:active, .dpad-btn.pressed {
+  background: #00ffff;
+  color: #000;
+  border-color: #fff;
+}
+
+.dpad-up { top: 0; left: 45px; width: 40px; height: 45px; }
+.dpad-down { bottom: 0; left: 45px; width: 40px; height: 45px; }
+.dpad-left { top: 45px; left: 0; width: 45px; height: 40px; }
+.dpad-right { top: 45px; right: 0; width: 45px; height: 40px; }
+
+.dpad-center {
+  position: absolute;
+  top: 45px;
+  left: 45px;
+  width: 40px;
+  height: 40px;
+  background: #1b1c26;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.action-btn {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 3px solid #ff4444;
+  background: #aa1111;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 900;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 6px 14px rgba(255, 0, 0, 0.4);
+  touch-action: none;
+  cursor: pointer;
+}
+
+.action-btn.jump-btn {
+  border-color: #3388ff;
+  background: #1144aa;
+  box-shadow: 0 6px 14px rgba(50, 120, 255, 0.4);
+  margin-top: -18px;
+}
+
+.action-btn:active, .action-btn.pressed {
+  transform: scale(0.92);
+  filter: brightness(1.3);
+}
+
+.center-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.pill-btn {
+  background: #2a2c3a;
+  border: 1px solid #44485e;
+  color: #ccc;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+}
+
+.pill-btn:active {
+  background: #ffd700;
+  color: #000;
+}
+
+.instructions-card {
+  max-width: 768px;
+  width: 95%;
+  background: rgba(25, 27, 40, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 16px 22px;
+  margin: 12px 0 24px 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #b0b4c8;
+}
+
+.instructions-card h3 {
+  color: #00ffff;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.key-badge {
+  display: inline-block;
+  background: #383b4e;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  border-bottom: 2px solid #202230;
+  margin: 0 2px;
+}
+
+footer {
+  margin-top: auto;
+  padding: 14px;
+  font-size: 0.75rem;
+  color: #666a80;
+  text-align: center;
+}
+
+footer a {
+  color: #8890aa;
+  text-decoration: none;
+}
+
+footer a:hover {
+  color: #00ffff;
+}
+
+@media (min-width: 768px) {
+  .mobile-controls {
+    display: none; /* Hide on desktop by default unless touch supported */
+  }
+}

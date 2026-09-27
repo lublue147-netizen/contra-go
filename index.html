@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Contra 魂斗罗 (Go + WebAssembly)</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>">
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <h1>CONTRA</h1>
+      <span>魂斗罗 · GO WASM</span>
+    </div>
+    <div class="header-controls">
+      <button id="btnChar" class="btn-ctrl" title="切换角色 (比尔/兰斯)">👤 切换角色</button>
+      <button id="btnSound" class="btn-ctrl" title="切换声音">🔊 音乐/音效</button>
+      <button id="btnCrt" class="btn-ctrl" title="CRT扫描线滤镜">📺 CRT滤镜</button>
+      <button id="btnTouchToggle" class="btn-ctrl" title="显示/隐藏虚拟按键">📱 触控盘</button>
+      <button id="btnFullscreen" class="btn-ctrl" title="全屏">⛶ 全屏</button>
+    </div>
+  </header>
+
+  <div class="game-wrapper">
+    <div class="cabinet-bezel" id="cabinet">
+      <canvas id="gameCanvas" width="256" height="224"></canvas>
+      <div id="crtOverlay" class="crt-overlay"></div>
+      <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">LOADING CONTRA.WASM...</div>
+      </div>
+    </div>
+
+    <!-- Mobile Virtual Touch Controls -->
+    <div class="mobile-controls" id="touchControls">
+      <!-- D-Pad -->
+      <div class="dpad">
+        <div class="dpad-btn dpad-up" data-btn="up">▲</div>
+        <div class="dpad-btn dpad-down" data-btn="down">▼</div>
+        <div class="dpad-btn dpad-left" data-btn="left">◀</div>
+        <div class="dpad-btn dpad-right" data-btn="right">▶</div>
+        <div class="dpad-center"></div>
+      </div>
+
+      <!-- Center System Buttons -->
+      <div class="center-buttons">
+        <button class="pill-btn" data-btn="start">START / 暂停</button>
+        <button class="pill-btn" data-btn="character" style="color:#00ffff;">👤 换角色</button>
+        <button class="pill-btn" data-btn="konami" style="color:#ffd700;">★ 30命秘籍</button>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <div class="action-btn" data-btn="shoot" title="开火 (B键)">B<br><span style="font-size:0.6rem">射击</span></div>
+        <div class="action-btn jump-btn" data-btn="jump" title="跳跃 (A键)">A<br><span style="font-size:0.6rem">跳跃</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="instructions-card">
+    <h3>🎮 键位操作指南 (Controls)</h3>
+    <p>
+      • 移动与瞄准：<span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> 或 <span class="key-badge">↑</span><span class="key-badge">↓</span><span class="key-badge">←</span><span class="key-badge">→</span> (支持8方向瞄准与俯卧匍匐)<br>
+      • 射击 / 开火：<span class="key-badge">J</span> 或 <span class="key-badge">Z</span> 或 <span class="key-badge">Space 空格</span><br>
+      • 跳跃：<span class="key-badge">K</span> 或 <span class="key-badge">X</span> (空翻跳跃)<br>
+      • 下落跳跃：<span class="key-badge">S</span> / <span class="key-badge">↓</span> + <span class="key-badge">跳跃</span> (可穿越下落悬空木桥/平台)<br>
+      • 切换角色：<span class="key-badge">C</span> 键 (比尔·雷泽 Bill / 兰斯·比恩 Lance)<br>
+      • 开始游戏 / 暂停：<span class="key-badge">Enter 回车</span><br>
+      • 经典30命秘籍：在标题画面按 <span class="key-badge">↑</span><span class="key-badge">↑</span><span class="key-badge">↓</span><span class="key-badge">↓</span><span class="key-badge">←</span><span class="key-badge">→</span><span class="key-badge">←</span><span class="key-badge">→</span><span class="key-badge">B</span><span class="key-badge">A</span> (或直接点击“30命秘籍”按钮)<br>
+      • 动态桥梁：奔跑通过第一关悬空索桥时，桥梁会连锁起爆，请迅速冲锋！<br>
+      • 外设支持：自动兼容标准 USB / 蓝牙无线手柄 (Xbox / PS / Switch 等)！
+    </p>
+  </div>
+
+  <footer>
+    <p>Powered by Go 1.22 + WebAssembly | Hosted on GitHub | Auto-Deployed to Vercel & Render</p>
+  </footer>
+
+  <script src="wasm_exec.js"></script>
+  <script>
+    // --- Web Audio 8-bit Contra Stage 1 Jungle Theme Sequencer ---
+    let bgmAudioCtx = null;
+    let bgmPlaying = false;
+    let bgmMuted = false;
+    let bgmGainNode = null;
+    let bgmTimer = null;
+    let currentStep = 0;
+
+    const noteFreqs = {
+      "D2": 73.42, "F2": 87.31, "G2": 97.99, "A2": 110.00, "Bb2": 116.54, "C3": 130.81,
+      "D3": 146.83, "F3": 174.61, "G3": 196.00, "A3": 220.00, "Bb3": 233.08, "C4": 261.63,
+      "D4": 293.66, "E4": 329.63, "F4": 349.23, "G4": 392.00, "Ab4": 415.30, "A4": 440.00, "C5": 523.25, "D5": 587.33,
+      "-": 0
+    };
+
+    const bassSeq = [
+      "D2", "D2", "F2", "D2", "G2", "D2", "F2", "G2",
+      "D2", "D2", "F2", "D2", "C3", "Bb2", "A2", "G2"
+    ];
+
+    const leadSeq = [
+      "D4", "-", "F4", "G4", "Ab4", "A4", "-", "F4", "D4", "-", "-", "C4", "D4", "-", "-", "-",
+      "D4", "-", "F4", "G4", "Ab4", "A4", "-", "C5", "D5", "-", "-", "C5", "A4", "-", "G4", "-"
+    ];
+
+    window.startContraBGM = function(ctx) {
+      if (bgmPlaying) return;
+      bgmAudioCtx = ctx;
+      bgmPlaying = true;
+      currentStep = 0;
+
+      if (!bgmGainNode) {
+        bgmGainNode = ctx.createGain();
+        bgmGainNode.gain.setValueAtTime(bgmMuted ? 0 : 0.16, ctx.currentTime);
+        bgmGainNode.connect(ctx.destination);
+      }
+
+      const stepIntervalMs = 105;
+
+      function tick() {
+        if (!bgmPlaying || !bgmAudioCtx) return;
+        const now = bgmAudioCtx.currentTime;
+
+        // 1. Bass voice
+        const bNote = bassSeq[currentStep % bassSeq.length];
+        if (bNote !== "-") {
+          const osc = bgmAudioCtx.createOscillator();
+          const gain = bgmAudioCtx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(noteFreqs[bNote], now);
+          gain.gain.setValueAtTime(0.20, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+          osc.connect(gain);
+          gain.connect(bgmGainNode);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        }
+
+        // 2. Lead voice
+        const lNote = leadSeq[currentStep % leadSeq.length];
+        if (lNote !== "-") {
+          const osc = bgmAudioCtx.createOscillator();
+          const gain = bgmAudioCtx.createGain();
+          osc.type = "square";
+          osc.frequency.setValueAtTime(noteFreqs[lNote], now);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+          osc.connect(gain);
+          gain.connect(bgmGainNode);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        }
+
+        // 3. Noise hi-hat / snare
+        if (currentStep % 2 === 0) {
+          const isSnare = (currentStep % 4 === 2);
+          const buf = bgmAudioCtx.createBuffer(1, Math.floor(bgmAudioCtx.sampleRate * 0.04), bgmAudioCtx.sampleRate);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.3));
+          const src = bgmAudioCtx.createBufferSource();
+          src.buffer = buf;
+          const nGain = bgmAudioCtx.createGain();
+          nGain.gain.setValueAtTime(isSnare ? 0.14 : 0.05, now);
+          src.connect(nGain);
+          nGain.connect(bgmGainNode);
+          src.start(now);
+        }
+
+        currentStep++;
+        bgmTimer = setTimeout(tick, stepIntervalMs);
+      }
+
+      tick();
+    };
+
+    window.stopContraBGM = function() {
+      bgmPlaying = false;
+      if (bgmTimer) {
+        clearTimeout(bgmTimer);
+        bgmTimer = null;
+      }
+    };
+
+    window.setContraBGMMute = function(muted) {
+      bgmMuted = muted;
+      if (bgmGainNode && bgmAudioCtx) {
+        bgmGainNode.gain.setValueAtTime(bgmMuted ? 0 : 0.16, bgmAudioCtx.currentTime);
+      }
+    };
+
+    // Ready callback from Wasm
+    window.onContraWasmReady = function() {
+      const overlay = document.getElementById("loadingOverlay");
+      if (overlay) {
+        overlay.style.transition = "opacity 0.4s ease";
+        overlay.style.opacity = "0";
+        setTimeout(() => overlay.style.display = "none", 400);
+      }
+    };
+
+    // Load Go WebAssembly Binary
+    async function initWasm() {
+      const loadingText = document.getElementById("loadingText");
+      if (!WebAssembly.instantiateStreaming) {
+        WebAssembly.instantiateStreaming = async (resp, importObject) => {
+          const source = await (await resp).arrayBuffer();
+          return await WebAssembly.instantiate(source, importObject);
+        };
+      }
+
+      const go = new Go();
+      try {
+        loadingText.innerText = "FETCHING CONTRA.WASM...";
+        const resp = fetch("contra.wasm");
+        const result = await WebAssembly.instantiateStreaming(resp, go.importObject);
+        loadingText.innerText = "STARTING ENGINE...";
+        go.run(result.instance);
+      } catch (err) {
+        console.error("Wasm load error:", err);
+        loadingText.innerHTML = "WASM 加载失败: " + err.message + "<br><br><small>如在本地用 file:// 协议打开，请使用 Web 服务器(如 vercel/render)运行</small>";
+      }
+    }
+
+    initWasm();
+
+    // Sound toggle button
+    const btnSound = document.getElementById("btnSound");
+    btnSound.addEventListener("click", () => {
+      if (window.toggleMute) {
+        const muted = window.toggleMute();
+        btnSound.innerText = muted ? "🔇 静音" : "🔊 音乐/音效";
+      }
+    });
+
+    // Character toggle button
+    const btnChar = document.getElementById("btnChar");
+    btnChar.addEventListener("click", () => {
+      if (window.toggleCharacter) {
+        const isLance = window.toggleCharacter();
+        btnChar.innerText = isLance ? "👤 兰斯 (2P)" : "👤 比尔 (1P)";
+      }
+    });
+
+    // CRT Scanlines toggle
+    const btnCrt = document.getElementById("btnCrt");
+    const crtOverlay = document.getElementById("crtOverlay");
+    btnCrt.addEventListener("click", () => {
+      crtOverlay.classList.toggle("disabled");
+      btnCrt.style.opacity = crtOverlay.classList.contains("disabled") ? "0.6" : "1.0";
+    });
+
+    // Toggle touch controls visibility
+    const btnTouchToggle = document.getElementById("btnTouchToggle");
+    const touchControls = document.getElementById("touchControls");
+    btnTouchToggle.addEventListener("click", () => {
+      const current = window.getComputedStyle(touchControls).display;
+      touchControls.style.display = (current === "none") ? "flex" : "none";
+    });
+
+    // Fullscreen toggle
+    const btnFullscreen = document.getElementById("btnFullscreen");
+    btnFullscreen.addEventListener("click", () => {
+      const cabinet = document.getElementById("cabinet");
+      if (!document.fullscreenElement) {
+        cabinet.requestFullscreen().catch(err => {
+          alert(`无法全屏: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // Virtual Touch & Mouse button binding
+    function bindVirtualButton(el) {
+      const btn = el.getAttribute("data-btn");
+      if (!btn) return;
+
+      const press = (e) => {
+        e.preventDefault();
+        el.classList.add("pressed");
+        if (window.AndroidInterface && window.AndroidInterface.vibrate) {
+          window.AndroidInterface.vibrate(btn === 'shoot' ? 25 : 15);
+        }
+        if (window.setVirtualInput) {
+          window.setVirtualInput(btn, true);
+        }
+      };
+
+      const release = (e) => {
+        e.preventDefault();
+        el.classList.remove("pressed");
+        if (window.setVirtualInput) {
+          window.setVirtualInput(btn, false);
+        }
+      };
+
+      el.addEventListener("touchstart", press, { passive: false });
+      el.addEventListener("touchend", release, { passive: false });
+      el.addEventListener("touchcancel", release, { passive: false });
+      el.addEventListener("mousedown", press);
+      el.addEventListener("mouseup", release);
+      el.addEventListener("mouseleave", release);
+    }
+
+    document.querySelectorAll("[data-btn]").forEach(bindVirtualButton);
+
+    // Global haptic helper accessible by Go Wasm
+    window.triggerHaptic = function(ms) {
+      if (window.AndroidInterface && window.AndroidInterface.vibrate) {
+        window.AndroidInterface.vibrate(ms || 40);
+      }
+    };
+  </script>
+</body>
+</html>
