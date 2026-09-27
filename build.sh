@@ -46,9 +46,14 @@ elif [ -f "web/wasm_exec.js" ]; then
     cp web/wasm_exec.js dist/wasm_exec.js
 fi
 
-# Copy vercel.json to dist for static hosting
+# Copy vercel.json and _headers to dist for static hosting
 if [ -f "vercel.json" ]; then
     cp vercel.json dist/vercel.json
+fi
+if [ -f "web/_headers" ]; then
+    cp web/_headers dist/_headers
+elif [ -f "_headers" ]; then
+    cp _headers dist/_headers
 fi
 
 echo "=== Build Complete! ==="

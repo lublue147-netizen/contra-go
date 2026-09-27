@@ -2,6 +2,7 @@
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/lublue147-netizen/contra-go)
 [![Vercel Live](https://img.shields.io/badge/Vercel-Online%20(Live)-success?logo=vercel)](https://contra-go.vercel.app)
+[![Cloudflare Pages](https://img.shields.io/badge/Cloudflare%20Pages-Online%20(Live)-orange?logo=cloudflare)](https://contra-go.pages.dev)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Online%20(Live)-blue?logo=github)](https://lublue147-netizen.github.io/contra-go/)
 
 本项目是用 **Go语言 (Golang)** 原生开发的经典红白机 **《魂斗罗》(Contra) 第一关群岛丛林战场**。
@@ -134,6 +135,25 @@ git push -u origin main
 3. 在 GitHub 仓库的 **Settings -> Secrets and variables -> Actions** 中添加：
    - `RENDER_DEPLOY_HOOK_URL`：粘贴你的 Deploy Hook Webhook URL。
 4. 之后每次 GitHub Actions 编译成功，就会自动向该 Webhook 发送触发请求，Render 会自动同步发布最新版本！
+
+---
+
+### 第四步：部署到 Cloudflare Pages
+
+本项目已全面支持 **Cloudflare Pages** 全球边缘 CDN 托管，并已提供 `_headers` 确保 WebAssembly MIME 类型正确生效：
+
+- **生产环境已上线**：`https://contra-go.pages.dev`
+- **免本地构建**：直接由 Cloudflare Pages 或 GitHub Actions 编译发布，零依赖本地机器！
+
+#### 关联 GitHub 持续集成部署：
+1. 登录 [Cloudflare 控制台](https://dash.cloudflare.com/)，进入 **Workers & Pages** -> **Create application** -> **Pages**。
+2. 选择 **Connect to Git** 并关联 `lublue147-netizen/contra-go` 仓库。
+3. 构建配置填写：
+   - **Framework preset**：`None`
+   - **Build command**：`bash build.sh`
+   - **Build output directory**：`dist`
+   - **Environment variables**：添加 `GO_VERSION=1.22.5`
+4. 点击 **Save and Deploy**，Cloudflare 将在边缘云端自动编译并部署！
 
 ---
 
